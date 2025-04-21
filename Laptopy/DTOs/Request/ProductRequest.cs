@@ -11,7 +11,7 @@ namespace Laptopy.DTOs.Request
         public string Description { get; set; } = string.Empty;
          public string Model { get; set; } = string.Empty;
         public int CategoryID { get; set; }
-        public List<IFormFile> File { get; set; } = new();
+        public IFormFile File { get; set; } = null!;
 
 
     }

@@ -32,7 +32,7 @@ namespace Laptopy.Controllers
         [HttpGet("{id}")]
         public IActionResult GetOne([FromRoute] int id)
         {
-            var product = _productRepository.GetOne(e => e.Id == id, includes: [e => e.ProductImages]);
+            var product = _productRepository.GetOne(e => e.Id == id);
             if (product != null)
             {
                 return Ok(product.Adapt<ProductResponse>());
@@ -47,47 +47,38 @@ namespace Laptopy.Controllers
         public IActionResult Create([FromForm] ProductRequest productRequest)
         {
             // Check if the files are empty or null
-            if (productRequest.File != null)
+            if (productRequest.File != null && productRequest.File.Length > 0)
             {
-                ModelState.AddModelError("File", "No files uploaded.");
-                return BadRequest(ModelState);
-            }
-
-            var product = new Product
-            {
-                Name = productRequest.Name,
-                Description = productRequest.Description,
-                Price = productRequest.Price,
-                Discount = productRequest.Discount,
-                Model = productRequest.Model,
-                CategoryID = productRequest.CategoryID,
-                ProductImages = new List<ProductImages>()
-            };
-
-            // Continue processing if files exist
-            foreach (var item in productRequest.File)
-            {
-                // Save the image file
-                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(item.FileName);
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(productRequest.File.FileName);
                 var filePath = Path.Combine(Directory.GetCurrentDirectory(), "images", fileName);
 
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                //if(!System.IO.File.Exists(filePath))
+                //{
+                //    System.IO.File.Create(filePath);
+                //}
+
+                using (var stream = System.IO.File.Create(filePath))
                 {
-                    item.CopyTo(stream);
+                    productRequest.File.CopyTo(stream);
                 }
 
-                product.ProductImages.Add(new ProductImages
-                {
-                    ImageUrl = fileName
-                });
+                // Save img name in db
+                Product product = productRequest.Adapt<Product>();
+                product.MainImg = fileName;
+                var productInDb = _productRepository.Create(product);
+                 _productRepository.Comitt();
+
+                return CreatedAtAction(nameof(GetOne), new { id = productInDb.Id }, productRequest);
             }
-
-            var productDB = _productRepository.Create(product);
-            _productRepository.Comitt(); 
-
-            return CreatedAtAction(nameof(GetOne), new { id = productDB.Id }, productDB);
+            ModelStateDictionary keyValuePairs = new();
+            keyValuePairs.AddModelError("File", "The file is not found");
+            return BadRequest(keyValuePairs);
         }
 
+
+     
+
+    
 
         [HttpDelete("{id}")]
         public IActionResult Delete([FromRoute] int id)
@@ -95,23 +86,19 @@ namespace Laptopy.Controllers
             var product = _productRepository.GetOne(e => e.Id == id);
             if (product != null)
             {
-                // Delete old images from wwwroot
-                if (product.ProductImages != null && product.ProductImages.Count > 0)
+                // Delete old img from wwwroot
+                if (product.MainImg != null)
                 {
-                    foreach (var productImage in product.ProductImages)
+                    var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "images", product.MainImg);
+                    if (System.IO.File.Exists(oldPath))
                     {
-                        var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "images", productImage.ImageUrl);
-
-                        // Check if file exists before deleting
-                        if (System.IO.File.Exists(oldPath))
-                        {
-                            System.IO.File.Delete(oldPath);
-                        }
+                        System.IO.File.Delete(oldPath);
                     }
                 }
 
-                // Delete product from the database
+                // Delete img name in db
                 _productRepository.Delete(product);
+
                 return NoContent();
             }
 

@@ -6,9 +6,9 @@ namespace Laptopy.Models
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public decimal Price { get; set; }
+        public string MainImg { get; set; } = string.Empty;
         public decimal Discount { get; set; }
         public string Description { get; set; } = string.Empty;
-        public List<ProductImages> ProductImages { get; set; } = new List<ProductImages>();
         public string Model { get; set; } = string.Empty;
         public int CategoryID { get; set; }
         public Category Category { get; set; } = null!;
